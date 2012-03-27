@@ -69,7 +69,12 @@ public class StreamHandler implements Runnable{
 							logger.info("\n\nA request from user for snapshot of output is detected");
 							s3FileSystem.getItem("/cmr-bucket/cmr-job-input/control/snapshot").delete(); //user notification for snapshot of available output
 							Global.snapshotRequestNumber++;
-							logger.info("\n\nA takesnapshot is set");
+						}
+						else if(("/cmr-bucket/cmr-job-input/control/stop").equals(child.getPath())){
+							
+							logger.info("\n\nA request from user for snapshot of output is detected");
+							s3FileSystem.getItem("/cmr-bucket/cmr-job-input/control/stop").delete();  //User notification for snapshot of available output
+							Global.endCurrentJob=true;
 						}
 						else{
 							newItem=true;
@@ -95,10 +100,15 @@ public class StreamHandler implements Runnable{
 							
 							if(("/cmr-bucket/cmr-job-input/control/snapshot").equals(child.getPath())){
 							
-								logger.info("\n\nA request from user for snapshot of output is detected");
+								logger.info("A request for snapshot is detected");
 								s3FileSystem.getItem("/cmr-bucket/cmr-job-input/control/snapshot").delete();  //User notification for snapshot of available output
 								Global.snapshotRequestNumber++;  
-								logger.info("\n\nA takesnapshot is set");
+							}
+							else if(("/cmr-bucket/cmr-job-input/control/stop").equals(child.getPath())){
+							
+								logger.info("A request to terminate job is encountered");
+								s3FileSystem.getItem("/cmr-bucket/cmr-job-input/control/stop").delete();  //User notification for snapshot of available output
+								Global.endCurrentJob=true;
 							}
 							else{
 						    	newItem=true;

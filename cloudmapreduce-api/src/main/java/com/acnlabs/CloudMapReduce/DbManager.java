@@ -734,20 +734,20 @@ public class DbManager {
 		
 		return reduceQSize;
 	}
-	public synchronized void updateReducerStatus(String bucket){
-		if(bucket=="flush"){
-			outputPushedByReducer.clear();
-			Global.numFinishedReducers=0;
-		}
-			outputPushedByReducer.add(bucket);
-			Global.numFinishedReducers++;
 	
-	}	
-	public boolean checkReducerStatus(String bucket){
-		if(!outputPushedByReducer.contains(bucket)){
-			return false;
+	//Devendra: New added functions in this file for tracking down job progress
+	
+	public synchronized void updateOutputCommittedReducerCount(){
+		
+		Global.numberOfReducerGivenOutputForCurrentSnapshotRequest++;
+	}
+	public synchronized void updateFinishedReducersCount(String operation){
+		
+		if("decrement".equals(operation)){
+			Global.numFinishedReducers--;
 		}
-		else
-			return true;
+		else{
+			Global.numFinishedReducers++;
+		}
 	}	
 }
