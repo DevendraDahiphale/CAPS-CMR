@@ -45,4 +45,9 @@ public class Global {
 	// Key-value pair separator, must be different from EfficientQueue's separator, and not substring of one another
 	// This separator must not be a normal string that could be confused with a key or value
 	static public final String separator = "!+!";
+	
+	   //Devendra: Added new variables
+	static public int numSplit;  
+	static public long numFinishedReducers;
+	static public long numFinishedMappers;
 }

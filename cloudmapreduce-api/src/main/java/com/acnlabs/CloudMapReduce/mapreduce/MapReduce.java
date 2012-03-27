@@ -117,7 +117,7 @@ public class MapReduce {
 			} catch (Exception e) {
 				logger.warn("Fail to close worker: " + e.getMessage());
 			}
-		}		
+		}	
 	}
 	
 	public class CombineCollector implements OutputCollector {
@@ -185,6 +185,7 @@ public class MapReduce {
 			// collect final key-value pair and put in output queue 
 			// enqueue to outSQS
     		try {
+    		    
     			outputQueue.push(URLEncoder.encode(key, "UTF-8") + Global.separator + URLEncoder.encode(value, "UTF-8"));
     			logger.info("\n\nNew output::key:" + key + "value:" + value);
 			
@@ -297,7 +298,7 @@ public class MapReduce {
 	
 		//Devendra made these varibales final (map, reduce and combiner)
 	public void mapreduce(final Mapper map, final Reducer reduce, 
-			 int numReduceQs, int numSetupNodes, final Reducer combiner) {
+			 int numReduceQs, int numSetupNodes, final Reducer combiner,String accessKeyId,String secretAccessKey) {
 		
 		this.numReduceQs = numReduceQs;  // TODO, move it into the constructor??
 		
@@ -339,8 +340,11 @@ public class MapReduce {
 								int mapId = Integer.parseInt(value.substring(0, separator));
 								value = value.substring(separator+Global.separator.length());
 								logger.debug(mapId + ".");
+								logger.info("\n\nMapper no" + mapId + "is invoked");
 						   		mapWorkers.push(new MapRunnable(map, combiner, Integer.toString(mapId), value, perf, mapId, msg.getReceiptHandle()));
+						   	//	reduceWorkers.notify(); //notify all reduce workers who are gone in waiting state after processing it's reduceQ
 						   		mapWorkers.waitForEmpty();    // only generate work when have capacity, could sleep here
+						   	
 							}
 							// SQS appears to be empty, but really should make sure we processed all in the queue
 						} while (true);//new ! dbManager.isStageFinished(jobID, Global.STAGE.MAP) );  // if still has work left in theory, go back bang the queue again
@@ -417,18 +421,32 @@ public class MapReduce {
 		//queueManager.report();
 		
 		boolean me=true;
+		HashSet<String> committedMapTemp;
+		HashSet<String> committedReducerTemp;
 		while(me)
 		 try{
-			// this.wait();
+			 committedMapTemp = dbManager.getCommittedTask(jobID, Global.STAGE.MAP);
+			 if(committedMapTemp.size() == Global.numSplit){
+				 logger.info("\n\n All invoked mappers are completed\n\n");
+				// committedReducerTemp=dbManager.getCommittedTask(jobID, Global.STAGE.REDUCE);
+				 if(Global.numFinishedReducers==numReduceQs){
+					 outputQueue.flush();  // output queue is an efficient queue, need to flush to clear
+				   	 new Snapshot(outputQueue,accessKeyId,secretAccessKey).ShowSnapshot();
+				   	 dbManager.updateReducerStatus("flush");
+					 logger.info("\n\nCurrent input of the job is completely processed");
+				     me=false;
+				 }
+			 }
+			 dbManager.waitForPhaseComplete(jobID, "reduce",0);
 			 Thread.sleep(3000);
 		 }catch(Exception e){
 			 logger.info("Main thread is interrupted" + e.getMessage());
-		 };
+		}
 		perf.stopTimer("mapPhase", mapPhase);
 
 		// REDUCE phase
-		long reducePhase = perf.getStartTime();
-		logger.info("start reduce phase");
+	//	long reducePhase = perf.getStartTime();
+	/*	logger.info("start reduce phase");
 		
 		try {			
 			do {
@@ -443,20 +461,21 @@ public class MapReduce {
 		}
 		catch ( Exception ex ) {
 			logger.warn("Reduce Exception: " + ex.getMessage());
-		}
+		}*/
 		// stop reduce phase
 //		dbManager.completeTask(jobID, taskID, "reduce");
-//		dbManager.waitForPhaseComplete(jobID, "reduce");
+//	dbManager.waitForPhaseComplete(jobID, "reduce");
 		
-		outputQueue.flush();  // output queue is an efficient queue, need to flush to clear
-		perf.stopTimer("reducePhase", reducePhase);	
+	//	outputQueue.flush();  // output queue is an efficient queue, need to flush to clear
+	//	new Snapshot(outputQueue,accessKeyId,secretAccessKey).ShowSnapshot();
+		
+	//	perf.stopTimer("reducePhase", reducePhase);	
 		perf.stopTimer("mapReduce", mapReduceTime);
 
 		queueManager.perf.report();
 		perf.report();
 		dbManager.perf.report();
 	}
-
     private class MapRunnable implements Runnable {
 		private Mapper map;
 		private Reducer combiner;
@@ -481,23 +500,13 @@ public class MapReduce {
 				long mapLocal = perf.getStartTime();
     			MapCollector mapCollector = new MapCollector(numReduceQs, mapId);
     			CombineCollector combineCollector = new CombineCollector(combiner, mapCollector);
-
 				long mapFunction = perf.getStartTime();     // for profiling purpose
-				
-				/*
-				 *DEVENDRA DAHIPHALE
-				 *This line was previously used to determine either all mapper has committed or not 
-				 *to start reduce phase or to conclude mapper phase is completed.  
-				 */
-				
-				dbManager.commitTask(jobID, taskID, mapId, Global.STAGE.MAP); //shifted
-				
 				map.map(key, value, combineCollector, perf);
 				perf.stopTimer("mapFunction", mapFunction);
 				// make sure all results are saved in SQS
 				combineCollector.flush();
 				// commit the change made by this map task
-	//Devendra new			dbManager.commitTask(jobID, taskID, mapId, Global.STAGE.MAP);
+				dbManager.commitTask(jobID, taskID, mapId, Global.STAGE.MAP);
 				mapCollector.close();   // close worker threads, update stats
 				// Delete message from input queue, important to delete after commit in case failure
 				inputQueue.deleteMessage(receiptHandle);
@@ -508,7 +517,6 @@ public class MapReduce {
 			}
     	}
     }
-			
     private class ReduceRunnable implements Runnable {
     	private String jobID;
     	private String bucket;  // the reduce queue number this runnable is responsible for
@@ -527,23 +535,38 @@ public class MapReduce {
 		}
     	
     	public void run() {
-    	while(true)  //Devendra Added new so that reducer will be attached to the job until job ends
+    		int total = 0;//getReduceQSize(jobID, Integer.parseInt(bucket), committedMap);
+			int count = 0;
+			int oldcount = 0;
+			int temp = 0;
+			int sleepTime=100;
+			int numOfPasses=0;
+			boolean newKeyValueFound=false;
+			// allocate worker
+			WorkerThreadQueue workers = new WorkerThreadQueue(Global.numDownloadWorkersPerReduce, "reduce" + bucket);
+			// A reduce queue could contain multiple reduce keys
+			// set numReduceQReadBuffer high to request a lot to parallelize
+			SimpleQueue value = queueManager.getQueue(getSubReduceQueueName(jobID, bucket), true, Global.numReduceQReadBuffer, QueueManager.QueueType.REDUCE, committedMap, null, workers);
+    		while(true)
     		try {
-    			committedMap = dbManager.getCommittedTask(jobID, Global.STAGE.MAP);
+    			numOfPasses=0;
+    	  /*  	committedMap = dbManager.getCommittedTask(jobID, Global.STAGE.MAP);
 				// total and count are for tracking the number of entries in a reduce queue
-				int total = getReduceQSize(jobID, Integer.parseInt(bucket), committedMap);
-				int count = 0;
-				int oldcount = 0;
-				int emptypass = 0; 
-				boolean newKeyValFound=false;
+			    total = getReduceQSize(jobID, Integer.parseInt(bucket), committedMap);
 
 				// allocate worker
-				WorkerThreadQueue workers = new WorkerThreadQueue(Global.numDownloadWorkersPerReduce, "reduce" + bucket);
+		/*		WorkerThreadQueue workers = new WorkerThreadQueue(Global.numDownloadWorkersPerReduce, "reduce" + bucket);
 				// A reduce queue could contain multiple reduce keys
 				// set numReduceQReadBuffer high to request a lot to parallelize
 				SimpleQueue value = queueManager.getQueue(getSubReduceQueueName(jobID, bucket), true, Global.numReduceQReadBuffer, QueueManager.QueueType.REDUCE, committedMap, null, workers);
-				long reduceLocal = perf.getStartTime();
+		*/		long reduceLocal = perf.getStartTime();
 				do {
+				    
+					committedMap = dbManager.getCommittedTask(jobID, Global.STAGE.MAP);
+					// total and count are for tracking the number of entries in a reduce queue
+				    
+					total = ((temp=getReduceQSize(jobID, Integer.parseInt(bucket), committedMap))>total?temp:total);
+				    
 					for (Message msg : value) {
 						String keyVal = msg.getBody();
 						count ++ ;
@@ -567,25 +590,20 @@ public class MapReduce {
 						long reduceNext = perf.getStartTime();
 						reduce.next(key, val, reduceStates.get(key), collector, perf);
 		                perf.stopTimer("reduceNext", reduceNext);
-		                newKeyValFound=true;
+		                newKeyValueFound=true;
 					}
-					if(newKeyValFound)
-					for (Entry<String, Object> entry : reduceStates.entrySet()) {
-						long reduceComplete = perf.getStartTime();
-						reduce.complete(entry.getKey(), entry.getValue(), collector);
-						perf.stopTimer("reduceComplete", reduceComplete);
-						newKeyValFound=false;
-					}
-					if ( oldcount != count ) {
+			//		if ( oldcount != count ) {
 						logger.debug(bucket + ": Processed " + count + " out of total " + total);
 						oldcount = count;
-						emptypass = 0;
-					}
-					else 
-						emptypass ++ ;
-				/*Devendra new	if ( count < total )
-						Thread.sleep(1000);  // sleep a little bit to wait
-					if ( emptypass > 5 )  { // should we start conflict resolution process?
+			//	}
+			//		else 
+					//	emptypass ++ ;
+					if ( count < total || committedMap.size()!=Global.numSplit)
+						Thread.sleep(1000); 
+					else
+						numOfPasses++;
+						// sleep a little bit to wait
+				/*	if ( emptypass > 5 )  { // should we start conflict resolution process?
 						perf.incrementCounter("attemptConflictResolution", 1);   // count how often we do this
 						logger.info("start conflict resolution");
 						emptypass = 0;   // do not bother again for another round
@@ -595,40 +613,52 @@ public class MapReduce {
 						if ( winner != null && ! winner.startsWith(taskID) ) {  // if we are not the winner, clean and quit
 							perf.incrementCounter("lostReduceConflictResolution", 1);
 							// Do not need this with the current design, only one entry for each number in the master reduce queue
-					**************************was already commented********************************		
+							/*
 							String winningReceipt = winner.substring(winner.indexOf('_')+1);
 							if ( winningReceipt != receiptHandle ) {
 								perf.incrementCounter("lostReduceConflictResolutionBecauseOfDup", 1);
 								logger.info("Remove duplicate master reduce message " + receiptHandle);
 								// must have been duplicate message in the master reduce queue, remove the redundant one, but not the primary one in case of failure
 								masterReduceQueue.deleteMessage(winningReceipt);
-							}
-				 **************************till here***********************************************
+							}outputQueue
 							return;
 						}
 					}*/
-				} while ( count < total );  // queue may not be empty because of eventual consistency
+				} while ( count < total || committedMap.size()!=Global.numSplit || numOfPasses < 2);  // queue may not be empty because of eventual consistency
 				if ( count > total )
 					logger.warn("Reduce queue " + bucket + " processed more than available: " + count + " vs. " + total);
-				/*Devendra new
-				 * for (Entry<String, Object> entry : reduceStates.entrySet()) {
-					long reduceComplete = perf.getStartTime();
-					reduce.complete(entry.getKey(), entry.getValue(), collector);
-					perf.stopTimer("reduceComplete", reduceComplete);
-				}*/
+				if(!dbManager.checkReducerStatus(bucket)){
+				
+					dbManager.updateReducerStatus(bucket);
+					for (Entry<String, Object> entry : reduceStates.entrySet()) {
+						long reduceComplete = perf.getStartTime();
+						reduce.complete(entry.getKey(), entry.getValue(), collector);
+						perf.stopTimer("reduceComplete", reduceComplete);
+					}
+    			}
 				// If a reduce task fails before commit, there could be a problem in conflict resolution when others think that this reduce task is still working on it
 				// Not a problem in theory because eventually a lower numbered task will grab it, but need to look into faster ways of recovery
-				dbManager.commitTask(jobID, taskID, Integer.parseInt(bucket), Global.STAGE.REDUCE);
-	//Devendra new			masterReduceQueue.deleteMessage(receiptHandle);  // delete what we processed
+			//	if(committedMap.size()==Global.numSplit){
+				
+			//		dbManager.commitTask(jobID, taskID, Integer.parseInt(bucket), Global.STAGE.REDUCE);
+					
+				//	dbManager.updateReducerStatus(true); //Devendra: Update that this reducer is done with the current input data
+			//	}
+			//	     dbManager.commitTask(jobID, taskID, Integer.parseInt(bucket), Global.STAGE.REDUCE);
+				
+		//		masterReduceQueue.deleteMessage(receiptHandle);  // delete what we processed
 				// delete threads
-	//Devendra new			workers.close();  // No need to wait for finish because we only download. The fact that we have downloaded all data means the workers have finished
+		//		workers.close();  // No need to wait for finish because we only download. The fact that we have downloaded all data means the workers have finished
 				// reduceStates.clear();
-				perf.stopTimer("reduce	//new while ends hereLocal", reduceLocal);
-    		}catch (Exception e) {
+		//		perf.stopTimer("reduceLocal", reduceLocal);
+				Thread.sleep(sleepTime);
+				if(sleepTime<120000)
+					sleepTime+=sleepTime;  
+    		}
+			catch (Exception e) {
 	        	logger.warn("ReduceRunnable Exception: " + e.getMessage());
 			}
-   //} while ends here
     	}
     }
 
-}
+}			

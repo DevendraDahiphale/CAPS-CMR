@@ -47,6 +47,7 @@ public class DbManager {
 	public PerformanceTracker perf = new PerformanceTracker();
 	private Logger  logger = Logger.getLogger("com.acnlabs.CloudMapReduce.DbManager");
     private WorkerThreadQueue workers;
+    public ArrayList<String> outputPushedByReducer=new ArrayList<String>();
 	
     /**
      * Instantiates a JobManager based on the SimpleDB access credentials.
@@ -726,13 +727,27 @@ public class DbManager {
 			workers.waitForFinish();
 
 			if ( reduceQCount < numSplits ) {
-				logger.debug("Getting reduceQ " + reduceQId + " size, only " + reduceQCount + " out of " + numSplits + " found. Will retry.");
+				logger.debug("Getting reduceQ " + reduceQId + " size, only " + reduceQCount + " out of " + numSplits );//DEVENDRA NEW+ " found. Will retry.");
 				try {Thread.sleep(1000);} catch (Exception ex2) {}
 			}
 	//Devendra new	} while ( reduceQCount < numSplits );
 		
 		return reduceQSize;
 	}
-
+	public synchronized void updateReducerStatus(String bucket){
+		if(bucket=="flush"){
+			outputPushedByReducer.clear();
+			Global.numFinishedReducers=0;
+		}
+			outputPushedByReducer.add(bucket);
+			Global.numFinishedReducers++;
 	
+	}	
+	public boolean checkReducerStatus(String bucket){
+		if(!outputPushedByReducer.contains(bucket)){
+			return false;
+		}
+		else
+			return true;
+	}	
 }

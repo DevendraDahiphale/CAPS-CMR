@@ -114,7 +114,7 @@ public abstract class MapReduceApp {
     private List<String> arguments = new ArrayList<String>();
 
 	protected abstract void run(String jobID, int numReduceQs, int numSetupNodes, 
-			SimpleQueue inputQueue, SimpleQueue outputQueue, int numReduceQReadBuffer) throws IOException;
+			SimpleQueue inputQueue, SimpleQueue outputQueue, int numReduceQReadBuffer,String accessKeyId,String secretAccessKey) throws IOException;
 	
 	/**
 	 * @param args
@@ -185,7 +185,7 @@ public abstract class MapReduceApp {
 		}
 		
 		// Run MapReduce application, implemented in individual app
-		run(jobID, numReduceQs, numSetupNodes, inputQueue, outputQueue, numReduceQReadBuffer);
+		run(jobID, numReduceQs, numSetupNodes, inputQueue, outputQueue, numReduceQReadBuffer,accessKeyId, secretAccessKey);
 		
 		// node 0 prints out some outputs for debugging purpose, can be disabled in production with -d 0
 		if (clientID == 0 && numDisplay > 0) {

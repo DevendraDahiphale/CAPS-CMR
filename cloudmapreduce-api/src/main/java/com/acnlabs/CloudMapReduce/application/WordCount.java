@@ -124,7 +124,7 @@ public class WordCount extends MapReduceApp{
   
 	
 	protected void run(String jobID, int numReduceQs,
-			int numSetupNodes, SimpleQueue inputQueue, SimpleQueue outputQueue, int numReduceQReadBuffer) 
+			int numSetupNodes, SimpleQueue inputQueue, SimpleQueue outputQueue, int numReduceQReadBuffer,String accessKeyId,String secretAccessKey) 
 			throws IOException {
 		
 		MapReduce mapreduce = new MapReduce(jobID, dbManager, queueManager, inputQueue, outputQueue);
@@ -133,9 +133,9 @@ public class WordCount extends MapReduceApp{
 
 		// invoke Map Reduce with input SQS name and output SQS name
 		if ( Global.enableCombiner )
-			mapreduce.mapreduce(map, reduce, numReduceQs, numSetupNodes, reduce);
+			mapreduce.mapreduce(map, reduce, numReduceQs, numSetupNodes, reduce,accessKeyId, secretAccessKey);
 		else
-			mapreduce.mapreduce(map, reduce, numReduceQs, numSetupNodes, null);
+			mapreduce.mapreduce(map, reduce, numReduceQs, numSetupNodes, null,accessKeyId, secretAccessKey);
 	}
   
   /**

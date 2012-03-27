@@ -19,6 +19,7 @@ public class StreamHandler implements Runnable{
 	private SimpleQueue inputQueue;
 	private ArrayList<String> preProcessedFileList = new ArrayList<String>();
 	private Logger  logger = Logger.getLogger("com.acnlabs.CloudMapReduce.MapReduceApp");
+	private static int mapNum;
 	public StreamHandler(String s3Path,SimpleQueue inputQueue,long numSplit,S3FileSystem s3FileSystem)
 	{
 		this.s3Path=s3Path;
@@ -37,8 +38,8 @@ public class StreamHandler implements Runnable{
 				if(addDirToList(s3FileSystem.getItem(s3Path),fileListToBeProcessed)) 
 				{
 					for(S3Item child:fileListToBeProcessed)//Dev for testing only
-					   logger.info("\n\n\nNEW FILE FOUND\n\n:" + child.getPath() );
-					
+					   logger.info("\n\nNEW FILE FOUND\n\n:" + child.getPath() );
+					Global.numSplit+=numSplit;	//to keep track of total number of mappers
 					addSplits(fileListToBeProcessed); //Dev add pointer to splits in input queue
 				}
 				try{
@@ -105,7 +106,6 @@ public class StreamHandler implements Runnable{
 	
 	private void addSplits(ArrayList<S3Item> fileListToBeProcessed) {
 		StringBuilder sb = new StringBuilder();
-		int mapNum = 0;
 		
 		long totalSize = 0;
 		long splitSize=0;
@@ -132,6 +132,7 @@ public class StreamHandler implements Runnable{
 				currentSize += len;
 				if (currentSize == splitSize) {
 					inputQueue.push(mapNum + Global.separator + sb.toString());
+					
 					mapNum ++ ;
 					currentSize = 0;
 					sb = new StringBuilder();

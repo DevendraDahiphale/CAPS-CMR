@@ -230,16 +230,17 @@ public class QueueManager implements Closeable {
     		
     		for (Message msg : newMessages) {
     			if ( type == QueueType.REDUCE )  {  // only perform duplicate detection for reduce queues
-    				if ( committedMap == null )
-    					logger.fatal("CommittedMap cannot be empty");
+    			/*Devendra New	if ( committedMap == null )
+    					logger.fatal("CommittedMap cannot be empty");*/
         			String body = msg.getBody();
         			int idx = body.indexOf(':');
 	    			String tag = body.substring(0, idx);
 	    			String newbody = body.substring(idx+1);
 	    			String committer = tag.substring(0, tag.lastIndexOf('_'));
-	    			if (!committedMap.contains(committer))
-	    				logger.info("Discard un-committed Map result from " + committer);
-	    			else if (receivedMsg.contains(tag))
+	    			/*Devendra new if (!committedMap.contains(committer))
+	    				logger.info("Discard un-committed Map result from " + committer);*/
+	    			
+	    			if (receivedMsg.contains(tag))
 	    				logger.info("Found duplicate message " + tag + " in reduce queue " + name);
 	    			else
 	    			{

@@ -125,5 +125,4 @@ public class WorkerThreadQueue implements Closeable {
         	logger.warn(name + " worker interrupted unexpectedly: " + e.getMessage());
 		}
 	}
-	
 }
