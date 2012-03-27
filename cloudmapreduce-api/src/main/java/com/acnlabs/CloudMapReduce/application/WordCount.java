@@ -28,12 +28,18 @@ import com.acnlabs.CloudMapReduce.S3FileSystem;
 import com.acnlabs.CloudMapReduce.SimpleQueue;
 import com.acnlabs.CloudMapReduce.mapreduce.*;
 import com.acnlabs.CloudMapReduce.performance.PerformanceTracker;
+import com.acnlabs.CloudMapReduce.S3Item;
+import com.amazon.s3.AWSAuthConnection;
+import com.amazon.s3.Bucket;
+import com.amazon.s3.GetResponse;
+
+
 
 
 /**
  * Word Count application
  */
-public class WordCount extends MapReduceApp {
+public class WordCount extends MapReduceApp{
 	
 	private static Logger appLogger = Logger.getLogger("com.acnlabs.CloudMapReduce.application.WordCount");
 
@@ -138,7 +144,8 @@ public class WordCount extends MapReduceApp {
    * @throws IOException When there is communication problems with the 
    *                     job tracker.
    */
-  public static void main(String[] args) throws Exception {
+	 
+  public static void main(String[] args) throws Exception{
 	  new WordCount().runMain(args);
 	  System.exit(0);
   }

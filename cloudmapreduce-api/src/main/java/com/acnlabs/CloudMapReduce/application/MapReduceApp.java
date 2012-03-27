@@ -175,15 +175,13 @@ public abstract class MapReduceApp {
 			// initialize initial queue
 			inputQueue.create();
 			outputQueue.create();
-
-			ArrayList<S3Item> fileList = new ArrayList<S3Item>();
-			for ( int i=0 ; i<1; i++ ) {
-			     addDirToList(s3FileSystem.getItem(s3Path), fileList);
+			try{
+				s3FileSystem.getItem(s3Path);
+			}catch(Exception e)
+			{
+				logger.info("error while reading item" + e);
 			}
-			addSplits(fileList, inputQueue, numSplits);
-			
-			workers.waitForFinish();
-			//initQueueManager.close();
+			new Thread(new StreamHandler(s3Path,inputQueue,numSplits,s3FileSystem)).start();
 		}
 		
 		// Run MapReduce application, implemented in individual app
@@ -211,77 +209,6 @@ public abstract class MapReduceApp {
 			queueManager.clean(jobID, workers);
 		// close all threads
 		queueManager.close();
-	}
-	
-
-	private void addDirToList(S3Item item, ArrayList<S3Item> fileList) {
-		if (item.isDir()) {
-
-			Collection<S3Item> children = item.getChildren(true);
-			
-			if (children.size() < 750) {
-				for (S3Item child : children) {
-					if (!child.isDir()) {
-						fileList.add(child);
-					}
-				}
-			}
-			else {
-				for (S3Item child : item.getChildren()) {
-					if (child.isDir()) {
-						addDirToList(child, fileList);
-					}
-					else {
-						fileList.add(child);
-					}
-				}
-			}
-		}
-		else {
-			fileList.add(item);
-		}
-	}
-	
-	private void addSplits(ArrayList<S3Item> fileList, SimpleQueue queue, int numSplits) {
-		StringBuilder sb = new StringBuilder();
-		int mapNum = 0;
-		
-		long totalSize = 0;
-		for (S3Item item : fileList) {
-			totalSize += item.getSize();
-		}
-		long splitSize = totalSize / numSplits + 1;
-		logger.info("Total input file size: " + totalSize + ". Each split size: " + splitSize);
-		
-		long currentSize = 0;
-		for (S3Item item : fileList) {
-			long filePos = 0;
-			while (filePos < item.getSize()) {
-				long len = Math.min(item.getSize() - filePos, splitSize - currentSize);
-				if (sb.length() > 0) {
-					sb.append(",");
-				}
-				sb.append(item.getPath());
-				sb.append(",");
-				sb.append(filePos);
-				sb.append(",");
-				sb.append(len);
-				filePos += len;
-				currentSize += len;
-				if (currentSize == splitSize) {
-					// prepend mapNum to uniquely identify each message, mapNum is the key, : is the separator
-					queue.push(mapNum + Global.separator + sb.toString());
-					mapNum ++ ;
-					currentSize = 0;
-					sb = new StringBuilder();
-				}
-			}
-		}
-		if (sb.length() > 0) {
-			// prepend mapNum to uniquely identify each message
-			queue.push(mapNum + Global.separator + sb.toString());
-			mapNum ++ ;
-		}
 	}
 
 }
