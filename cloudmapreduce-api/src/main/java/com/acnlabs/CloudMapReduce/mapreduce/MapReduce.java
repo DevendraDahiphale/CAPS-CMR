@@ -186,7 +186,7 @@ public class MapReduce {
 			// enqueue to outSQS
     		try {
     			outputQueue.push(URLEncoder.encode(key, "UTF-8") + Global.separator + URLEncoder.encode(value, "UTF-8"));
-			logger.info("\n\nNew output::key:" + key + "value:" + value);
+    			logger.info("\n\nNew output::key:" + key + "value:" + value);
 			
     		}
     		catch (Exception ex) {
@@ -534,7 +534,8 @@ public class MapReduce {
 				int total = getReduceQSize(jobID, Integer.parseInt(bucket), committedMap);
 				int count = 0;
 				int oldcount = 0;
-				int emptypass = 0;
+				int emptypass = 0; 
+				boolean newKeyValFound=false;
 
 				// allocate worker
 				WorkerThreadQueue workers = new WorkerThreadQueue(Global.numDownloadWorkersPerReduce, "reduce" + bucket);
@@ -566,6 +567,14 @@ public class MapReduce {
 						long reduceNext = perf.getStartTime();
 						reduce.next(key, val, reduceStates.get(key), collector, perf);
 		                perf.stopTimer("reduceNext", reduceNext);
+		                newKeyValFound=true;
+					}
+					if(newKeyValFound)
+					for (Entry<String, Object> entry : reduceStates.entrySet()) {
+						long reduceComplete = perf.getStartTime();
+						reduce.complete(entry.getKey(), entry.getValue(), collector);
+						perf.stopTimer("reduceComplete", reduceComplete);
+						newKeyValFound=false;
 					}
 					if ( oldcount != count ) {
 						logger.debug(bucket + ": Processed " + count + " out of total " + total);
@@ -601,11 +610,12 @@ public class MapReduce {
 				} while ( count < total );  // queue may not be empty because of eventual consistency
 				if ( count > total )
 					logger.warn("Reduce queue " + bucket + " processed more than available: " + count + " vs. " + total);
-				for (Entry<String, Object> entry : reduceStates.entrySet()) {
+				/*Devendra new
+				 * for (Entry<String, Object> entry : reduceStates.entrySet()) {
 					long reduceComplete = perf.getStartTime();
 					reduce.complete(entry.getKey(), entry.getValue(), collector);
 					perf.stopTimer("reduceComplete", reduceComplete);
-				}
+				}*/
 				// If a reduce task fails before commit, there could be a problem in conflict resolution when others think that this reduce task is still working on it
 				// Not a problem in theory because eventually a lower numbered task will grab it, but need to look into faster ways of recovery
 				dbManager.commitTask(jobID, taskID, Integer.parseInt(bucket), Global.STAGE.REDUCE);
