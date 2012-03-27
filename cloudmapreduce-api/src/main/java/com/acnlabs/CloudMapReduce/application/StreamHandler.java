@@ -65,13 +65,21 @@ public class StreamHandler implements Runnable{
 				for (S3Item child : children) {
 					//Dev if previously processed item then do not add
 					if (!child.isDir() && !preProcessedFileList.contains(child.getPath())){
-						newItem=true;
-						fileListToBeProcessed.add(child);
-						/*
-						 *  Dev adding child only doesn't work because each request for s3item 
-						 *  will give different handle(a number) so added path which will be unique for same item
-						 */
-						preProcessedFileList.add(child.getPath()); 
+						if(("/cmr-bucket/cmr-job-input/control/snapshot.txt").equals(child.getPath())){
+							logger.info("\n\nA request from user for snapshot of output is detected");
+							s3FileSystem.getItem("/cmr-bucket/cmr-job-input/control/snapshot.txt").delete(); //user notification for snapshot of available output
+							Global.snapshotRequestNumber++;
+							logger.info("\n\nA takesnapshot is set");
+						}
+						else{
+							newItem=true;
+							fileListToBeProcessed.add(child);
+							/*
+							 *  Dev adding child only doesn't work because each request for s3item 
+							 *  will give different handle(a number) so added path which will be unique for same item
+							 */
+							preProcessedFileList.add(child.getPath());
+						} 
 					}
 				}
 			}
@@ -84,9 +92,19 @@ public class StreamHandler implements Runnable{
 						//Dev if previously processed item then do not add
 						if(!preProcessedFileList.contains(child.getPath()))
 						{
-							newItem=true;
-							fileListToBeProcessed.add(child);
-							preProcessedFileList.add(child.getPath());
+							
+							if(("/cmr-bucket/cmr-job-input/control/snapshot.txt").equals(child.getPath())){
+							
+								logger.info("\n\nA request from user for snapshot of output is detected");
+								s3FileSystem.getItem("/cmr-bucket/cmr-job-input/control/snapshot.txt").delete();  //User notification for snapshot of available output
+								Global.snapshotRequestNumber++;  
+								logger.info("\n\nA takesnapshot is set");
+							}
+							else{
+						    	newItem=true;
+							    fileListToBeProcessed.add(child);
+							    preProcessedFileList.add(child.getPath());
+							}
 						}
 					}
 				}

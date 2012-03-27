@@ -163,7 +163,7 @@ public abstract class MapReduceApp {
 		
 		/*RBK: jobProgressTracker initialization */
 		//TODO change the static s3Path given to cmd line arg. a separate arg for jobtracker, rolling, everything. the user mit want that
-		Global.jobProgressTracker=new JobProgressTracker(1000,"/radixanddreamz/" + "JobProgressTrackerData/",accessKeyId,secretAccessKey); //WRONG WRONG WRONG:::run() is called in the constructor of JobProgressTracker itself
+		Global.jobProgressTracker=new JobProgressTracker(1000,"/cmr-bucket/" + "JobProgressTrackerData/",accessKeyId,secretAccessKey); //WRONG WRONG WRONG:::run() is called in the constructor of JobProgressTracker itself
 		new Thread(Global.jobProgressTracker).start();	//REMEMBER THIS METHOD> NOT TO INCLUDE RUN() call IN THE CONSTRUCTOR!! DOES NOT NOT NOT CREATE A NEW THREAD!!!
 		//ALSO DO NOT USE .run(). that function DOES NOT RETURN. use START ONLY!!
 		

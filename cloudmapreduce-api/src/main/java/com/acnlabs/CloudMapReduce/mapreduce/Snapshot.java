@@ -35,7 +35,7 @@ public class Snapshot{
 			}
 			public void ShowSnapshot()
 			{
-				String outputString="";
+				String outputString="Output of job:\n";
 				s3FileSystem=new S3FileSystem(accessKeyId, secretAccessKey);
 				
 				logger.info("Reading OutputQueue");
@@ -49,7 +49,7 @@ public class Snapshot{
 					
 					// creating bucket and uploading file NOTE: its static right now, make it dynamic, TBD
 					logger.info("\n\n\nCreating new Bucket and Pushing data");
-					S3Item s= s3FileSystem.getItem("/radixanddreamz/output/");
+					S3Item s= s3FileSystem.getItem("/cmr-bucket/output/");
 					s.upload("snapshot.txt" + System.currentTimeMillis(), outputString.getBytes());
 					logger.info("\n\n A file has been uploaded in s3 named snapshot.txt");
 				}

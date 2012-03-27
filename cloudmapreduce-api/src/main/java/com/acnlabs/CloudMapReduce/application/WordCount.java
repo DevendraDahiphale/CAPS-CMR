@@ -112,7 +112,6 @@ public class WordCount extends MapReduceApp{
 	public void next(String key, String value, int[] state, OutputCollector output, PerformanceTracker perf) throws IOException {
 		state[0] += Integer.parseInt(value);
 	}
-	
 	public void complete(String key, int[] state, OutputCollector output) throws Exception {
 		output.collect(key, String.valueOf(state[0]));
 	}

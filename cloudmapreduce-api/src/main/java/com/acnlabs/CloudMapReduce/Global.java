@@ -52,6 +52,7 @@ public class Global {
 	static public int numSplit;  
 	static public long numFinishedReducers;
 	static public long numFinishedMappers;
+	static public long snapshotRequestNumber; //Dev: For each request it will be incremented by one
 	
 	/*RBK: */
 	static public JobProgressTracker jobProgressTracker;

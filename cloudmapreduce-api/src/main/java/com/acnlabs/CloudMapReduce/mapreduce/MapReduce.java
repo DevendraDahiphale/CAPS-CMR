@@ -54,6 +54,10 @@ public class MapReduce {
 	private HashSet<String> committedMap;  // set of taskId,mapId pair that generated valid reduce messages
 	private Logger  logger = Logger.getLogger("com.acnlabs.CloudMapReduce.MapReduce");
 	private int numReduceQs;
+	private boolean keepJobRunning=true;
+	HashSet<String> committedMapForJobProgressTrace;
+	HashSet<String> committedReducerTempForJobProgressTrace;
+	long snapshotRequestsServed=0;
 	
 	private int flag=0;
 	
@@ -379,8 +383,8 @@ public class MapReduce {
 				//Devendra Dahiphale: Check if message returned by masterReduceQueue is not earlier due to eventual consistancy
 				if(!preProcessedFileList.contains(bucket=msg.getBody()))
 				{
+					reduceWorkers.waitForEmpty();    // only generate work when have capacity, could sleep here ( changed location by Devendra ) was 
 					reduceWorkers.push(new ReduceRunnable(jobID, bucket, reduce, reduceCollector, msg.getReceiptHandle()));
-					reduceWorkers.waitForEmpty();    // only generate work when have capacity, could sleep here
 					logger.info("\n\n" + Global.numLocalReduceThreads + ":MRQPOller-PUSHED ONE REDUCE-RUNNABLE OBJECT into reduceWorkers(setup Phase) BUCKET: " + bucket);
 					preProcessedFileList.add(bucket);
 				//	reduceWorkers.storePushedSequence(bucket);
@@ -390,7 +394,7 @@ public class MapReduce {
 		 * ********************************************************************************************
 		 */
 		
-		
+		logger.info("\n\ngone khali");
 		
 		// read from input SQS
 /*Devendra commented		try {
@@ -424,26 +428,29 @@ public class MapReduce {
 		
 		// stop map phase
 		//queueManager.report();
-		
-		boolean me=true;
-		HashSet<String> committedMapTemp;
-		HashSet<String> committedReducerTemp;
-		while(me)
+		while(keepJobRunning)
 		 try{
-			 committedMapTemp = dbManager.getCommittedTask(jobID, Global.STAGE.MAP);
+			 if(Global.snapshotRequestNumber>snapshotRequestsServed){
+	
+				 logger.info("\n\nA snapshot request serving is in process");
+				 outputQueue.flush();  // output queue is an efficient queue, need to flush to clear
+			 	 new Snapshot(outputQueue,accessKeyId,secretAccessKey).ShowSnapshot(); 
+			 	 snapshotRequestsServed=Global.snapshotRequestNumber;
+			 }
+		/*	 committedMapTemp = dbManager.getCommittedTask(jobID, Global.STAGE.MAP);
 			 if(committedMapTemp.size() == Global.numSplit){
 				 logger.info("\n\n All invoked mappers are completed\n\n");
 			//	 committedReducerTemp=dbManager.getCommittedTask(jobID, Global.STAGE.REDUCE);
 				 if(Global.numFinishedReducers==numReduceQs){
 					 outputQueue.flush();  // output queue is an efficient queue, need to flush to clear
-				//   	 new Snapshot(outputQueue,accessKeyId,secretAccessKey).ShowSnapshot();
+				 	 new Snapshot(outputQueue,accessKeyId,secretAccessKey).ShowSnapshot();
 				   	 dbManager.updateReducerStatus("flush");
 					 logger.info("\n\nCurrent input of the job is completely processed");
 				     me=false;
 				 }
 			 }
-			 dbManager.waitForPhaseComplete(jobID, "reduce",0);
-			 Thread.sleep(3000);
+			 dbManager.waitForPhaseComplete(jobID, "reduce",0);*/
+			 Thread.sleep(200);
 		 }catch(Exception e){
 			 logger.info("Main thread is interrupted" + e.getMessage());
 		}
@@ -529,6 +536,7 @@ public class MapReduce {
     	private OutputCollector collector;
     	private HashMap<String, Object> reduceStates;
     	private String receiptHandle;
+    	private long snapshotRequestsServed;
     	
     	public ReduceRunnable(String jobID, String bucket, Reducer reduce, OutputCollector collector, String receiptHandle) {
     		this.jobID = jobID;
@@ -537,6 +545,7 @@ public class MapReduce {
     		this.collector = collector;
 			this.reduceStates = new HashMap<String, Object>();
 			this.receiptHandle = receiptHandle;   // receipt handle for the message in the master reduce queue
+			this.snapshotRequestsServed=0;//Dev: Initially zero requests are served
 		}
     	
     	public void run() {
@@ -552,7 +561,7 @@ public class MapReduce {
 			// A reduce queue could contain multiple reduce keys
 			// set numReduceQReadBuffer high to request a lot to parallelize
 			SimpleQueue value = queueManager.getQueue(getSubReduceQueueName(jobID, bucket), true, Global.numReduceQReadBuffer, QueueManager.QueueType.REDUCE, committedMap, null, workers);
-    	//	while(true)
+    		while(true)
     		try {
     			numOfPasses=0;
     	  /*  	committedMap = dbManager.getCommittedTask(jobID, Global.STAGE.MAP);
@@ -632,19 +641,23 @@ public class MapReduce {
 								masterReduceQueue.deleteMessage(winningReceipt);
 							}outputQueue
 							return;
-						}
+						}snapshotRequestsServed
 					}*/
+					if(Global.snapshotRequestNumber>snapshotRequestsServed){
+						for (Entry<String, Object> entry : reduceStates.entrySet()) {
+							long reduceComplete = perf.getStartTime();
+							reduce.complete(entry.getKey(), entry.getValue(), collector);
+							perf.stopTimer("reduceComplete", reduceComplete);
+						}
+						snapshotRequestsServed=Global.snapshotRequestNumber;
+					}
 				} while ( count < total || committedMap.size()!=Global.numSplit || numOfPasses < 2);  // queue may not be empty because of eventual consistency
 				if ( count > total )
 					logger.warn("Reduce queue " + bucket + " processed more than available: " + count + " vs. " + total);
 				//if(!dbManager.checkReducerStatus(bucket)){
 				
 					dbManager.updateReducerStatus(bucket);
-					for (Entry<String, Object> entry : reduceStates.entrySet()) {
-						long reduceComplete = perf.getStartTime();
-						reduce.complete(entry.getKey(), entry.getValue(), collector);
-						perf.stopTimer("reduceComplete", reduceComplete);
-					}
+				
     		//	}
 				// If a reduce task fails before commit, there could be a problem in conflict resolution when others think that this reduce task is still working on it
 				// Not a problem in theory because eventually a lower numbered task will grab it, but need to look into faster ways of recovery
