@@ -34,7 +34,6 @@ public class WorkerThreadQueue implements Closeable {
 	private int numThreads;
 	private String name;  // name of the thread pool, used for debugging purpose
 	private Logger  logger = Logger.getLogger("com.acnlabs.CloudMapReduce.WorkerThreadQueue");
-	
 	public WorkerThreadQueue(int numThreads, String name) {
 		this.name = name;
 		this.numThreads = numThreads;

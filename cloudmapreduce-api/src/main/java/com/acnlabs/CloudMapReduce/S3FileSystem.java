@@ -170,6 +170,18 @@ public class S3FileSystem {
 		public Collection<S3Item> getChildren() {
 			return getChildren(false);
 		}
+		/*RBK TO BE VERIFIED!!*/
+		public void delete(){
+			try{
+				Response response=conn.delete(bucket, path, null);	
+				response.connection.getResponseMessage();
+			}
+			catch(Exception e){
+				logger.info("\n\nEXCEPTION IN DELETE S3Item\n\n" + e );
+				e.printStackTrace();
+			}
+			
+		}
 	}
 	
 

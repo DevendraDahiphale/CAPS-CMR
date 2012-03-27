@@ -18,6 +18,7 @@
 package com.acnlabs.CloudMapReduce.application;
 
 import java.io.IOException;
+import com.acnlabs.CloudMapReduce.performance.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Collection;
@@ -31,6 +32,7 @@ import com.acnlabs.CloudMapReduce.QueueManager;
 import com.acnlabs.CloudMapReduce.S3FileSystem;
 import com.acnlabs.CloudMapReduce.S3Item;
 import com.acnlabs.CloudMapReduce.SimpleQueue;
+import com.acnlabs.CloudMapReduce.performance.JobProgressTracker;
 import com.acnlabs.CloudMapReduce.util.WorkerThreadQueue;
 import com.amazonaws.queue.model.Message;
 
@@ -158,6 +160,12 @@ public abstract class MapReduceApp {
 		Global.enableCombiner = enableCombiner;
 		Global.numSDBDomain = numSDBDomain;
 		Global.outputQueueName = outputQueueName;
+		
+		/*RBK: jobProgressTracker initialization */
+		//TODO change the static s3Path given to cmd line arg. a separate arg for jobtracker, rolling, everything. the user mit want that
+		Global.jobProgressTracker=new JobProgressTracker(1000,"/radixanddreamz/" + "JobProgressTrackerData/",accessKeyId,secretAccessKey); //WRONG WRONG WRONG:::run() is called in the constructor of JobProgressTracker itself
+		new Thread(Global.jobProgressTracker).start();	//REMEMBER THIS METHOD> NOT TO INCLUDE RUN() call IN THE CONSTRUCTOR!! DOES NOT NOT NOT CREATE A NEW THREAD!!!
+		//ALSO DO NOT USE .run(). that function DOES NOT RETURN. use START ONLY!!
 		
 		dbManager = new DbManager(accessKeyId, secretAccessKey, numSplits, numReduceQs);
 		queueManager = new QueueManager(accessKeyId, secretAccessKey);  // workers used to clean queues

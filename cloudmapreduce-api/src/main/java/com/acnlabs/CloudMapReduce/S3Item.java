@@ -30,4 +30,6 @@ public interface S3Item {
 	Collection<S3Item> getChildren();
 	Collection<S3Item> getChildren(boolean all);
 	long getSize();
+	/*RBk*/
+	public void delete();
 }

@@ -354,6 +354,7 @@ public class QueueManager implements Closeable {
         		// Create queue
         		localservice.createQueue(new CreateQueue().withQueueName(name).withDefaultVisibilityTimeout(visibilityTimeout));
         		perf.stopTimer("createQueueStat", createQueueStat);
+        	
         	}
         	catch (AmazonSQSException ex) {
         		perf.stopTimer("createQueueStat", createQueueStat);
@@ -378,6 +379,9 @@ public class QueueManager implements Closeable {
         }
         
         public void flush() {}  // nothing to flush for simple queues
+        
+        public void updateVisibilityTimeOut(){
+        }
     }
     
     // Using the Adapter pattern, instead of inheritance, allows us to make any SimpleQueue to be efficient 

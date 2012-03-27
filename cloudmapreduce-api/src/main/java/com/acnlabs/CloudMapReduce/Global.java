@@ -17,6 +17,8 @@
 */ 
 package com.acnlabs.CloudMapReduce;
 
+import com.acnlabs.CloudMapReduce.performance.JobProgressTracker;
+
 // Hosts global configuration variables. It is a lot easier to host them in a central place than passing them around
 
 public class Global {
@@ -50,4 +52,7 @@ public class Global {
 	static public int numSplit;  
 	static public long numFinishedReducers;
 	static public long numFinishedMappers;
+	
+	/*RBK: */
+	static public JobProgressTracker jobProgressTracker;
 }

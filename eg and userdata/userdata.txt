@@ -1,8 +1,0 @@
-AWS_ACCESS_KEY=AKIAI43FNRYDVR4AUBWA
-AWS_SECRET_KEY=t4ciOJLzZhtqf7Zzu7jttWtIB81IRhgcsnIzNqJS
-CLOUDMAPREDUCE_JAR=/radixanddreamz/cloudmapreduce-api-0.8-development.jar,/radixanddreamz/cloudmapreduce-examples-0.8-development.jar
-COMMAND_LINE="com.acnlabs.CloudMapReduce.application.WordCount -k AKIAI43FNRYDVR4AUBWA -s t4ciOJLzZhtqf7Zzu7jttWtIB81IRhgcsnIzNqJS -i /radixanddreamz/test.txt -j nejob1 -p 20 -r 20 -c 0"
-JOB_ID=nejob1
-OUTPUT=/radixanddreamz/output
-OTHER_CONFIG=/radixanddreamz/config
-BASE_ID=0
