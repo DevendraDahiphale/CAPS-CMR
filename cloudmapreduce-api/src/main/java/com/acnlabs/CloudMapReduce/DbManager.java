@@ -714,7 +714,7 @@ public class DbManager {
 	public int getReduceQSize(String jobID, int reduceQId, HashSet<String> committedMap) {
 		localCommittedMap = committedMap; 
 		localReduceQId = reduceQId;
-		do {
+	//Devendra new	do {
 			reduceQSize = 0;
 			reduceQCount = 0;
 			
@@ -729,7 +729,7 @@ public class DbManager {
 				logger.debug("Getting reduceQ " + reduceQId + " size, only " + reduceQCount + " out of " + numSplits + " found. Will retry.");
 				try {Thread.sleep(1000);} catch (Exception ex2) {}
 			}
-		} while ( reduceQCount < numSplits );
+	//Devendra new	} while ( reduceQCount < numSplits );
 		
 		return reduceQSize;
 	}
