@@ -416,7 +416,7 @@ public class MapReduce {
 		// stop map phase
 		//queueManager.report();
 		
-		while(!endCurrentJob){
+		while(!Global.endCurrentJob){
 			try{
 				  //Devendra: For a snapshot request check wheather all the reducer has given their output
 				if(Global.numberOfReducerGivenOutputForCurrentSnapshotRequest== numReduceQs){
@@ -430,14 +430,10 @@ public class MapReduce {
 				 committedReducerForJobProgressTrace=dbManager.getCommittedTask(jobID, Global.STAGE.REDUCE);
 					if(Global.numFinishedReducers==numReduceQs){
 				   	 	logger.info("\n\nCurrent input of the job is completely processed");
-				   	 	committedReducerForJobProgressTrace=dbManager.getCommittedTask(jobID, Global.STAGE.REDUCE);
-				   	 	 //check if all the reducer are finished by their own after a terminate job notifiction from user( not forced to close )
-				   	 	if(this.committedReducerForJobProgressTrace.size()==numReduceQs ){
-				   	 		endCurrentJob=true;
-				   	 	}
+				   	 	Global.endCurrentJob=true;
 					}
 				}
-				Thread.sleep(200);
+				Thread.sleep(250);
 			}catch(Exception e){
 				logger.info("Main thread is interrupted" + e.getMessage());
 			}
@@ -463,6 +459,18 @@ public class MapReduce {
 			logger.warn("Reduce Exception: " + ex.getMessage());
 		}*/
 		// stop reduce phase
+		while(!endCurrentJob){
+			try{
+				committedReducerForJobProgressTrace=dbManager.getCommittedTask(jobID, Global.STAGE.REDUCE);
+				//check if all the reducer are finished by their own after a terminate job notifiction from user( not forced to close )
+	   	 		if(this.committedReducerForJobProgressTrace.size()==numReduceQs ){
+	   	 			endCurrentJob=true;
+	   	 		}
+	   	 		Thread.sleep(100);
+	   	 		}catch(Exception e){
+	   	 			logger.error("Warning Job terminated due to failure of main thread" + e.getMessage() );
+	   	 		}
+		}
 	   dbManager.completeTask(jobID, taskID, "reduce");
 	   dbManager.waitForPhaseComplete(jobID, "reduce",0);
 		

@@ -18,7 +18,7 @@ public class JobProgressTracker implements Runnable{
 		private static String s3Path;	//take a single s3 path-must be a folder. upload 2 files- mapperProgressLog and reducerProgressLog
 		private static S3FileSystem s3FileSystem;
 		private static S3Item s3Item;
-		private Logger  logger = Logger.getLogger("com.acnlabs.CloudMapReduce.RollingStore");
+		private Logger  logger = Logger.getLogger("com.acnlabs.CloudMapReduce.JobProgressTracker");
 		
 		//s3path must be a filename
 		public JobProgressTracker(long progressTrackingIntervalInMillis,String s3Path, String accessKeyId,String secretAccessKey){	//the interval in milliseconds after which the thread makes a new entry in the log
@@ -27,13 +27,9 @@ public class JobProgressTracker implements Runnable{
 			this.s3Path=s3Path;	//RBK TODO take from user as a command line argument. Must be a folder-ending in "/"
 			s3FileSystem=new S3FileSystem(accessKeyId,secretAccessKey);
 			s3Item=s3FileSystem.getItem(s3Path);
-			
-			
 			s3Item.upload("mapperProgressLog.txt",(String.valueOf(System.currentTimeMillis()/1000) + " " + String.valueOf(0)).getBytes());
 			s3Item.upload("reducerProgressLog.txt",(String.valueOf(System.currentTimeMillis()/1000) + " " + String.valueOf(0)).getBytes());
-			
-			//this.run(); NO NO NO NO NO!!!!!
-			
+				
 		}
 		
 		public void run(){
