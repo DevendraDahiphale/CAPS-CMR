@@ -54,7 +54,7 @@ public class Global {
 	static public long numFinishedMappers;
 	static public long snapshotRequestNumber; //Dev: For each request it will be incremented by one
 	static public boolean endCurrentJob=false;
-	static public boolean newDataFound=false;
+	static public long numberOfReducerGivenOutputForCurrentSnapshotRequest;
 	
 	/*RBK: */
 	static public JobProgressTracker jobProgressTracker;

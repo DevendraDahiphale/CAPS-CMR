@@ -26,7 +26,6 @@ public class StreamHandler implements Runnable{
 		this.inputQueue=inputQueue;
 		this.numSplit=numSplit;
 		this.s3FileSystem=s3FileSystem;
-		Global.newDataFound=false;
 	}
 	public void run()
 	{
@@ -41,7 +40,6 @@ public class StreamHandler implements Runnable{
 					for(S3Item child:fileListToBeProcessed)//Dev for testing only
 					   logger.info("\n\nNEW FILE FOUND\n\n:" + child.getPath() );
 					Global.numSplit+=numSplit;	//to keep track of total number of mappers
-					Global.newDataFound=true;
 					addSplits(fileListToBeProcessed); //Dev add pointer to splits in input queue
 				}
 				try{
