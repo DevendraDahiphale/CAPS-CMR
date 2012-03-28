@@ -51,11 +51,11 @@ public class Snapshot{
 					logger.info("\n\n\nCreating new Bucket and Pushing data");
 					S3Item s= s3FileSystem.getItem("/cmr-bucket/output/");
 					s.upload("snapshot.txt" + System.currentTimeMillis(), outputString.getBytes());
-					logger.info("\n\n A file has been uploaded in s3 named snapshot.txt");
+					logger.info("A file has been uploaded in s3 named snapshot" + " + system time" + ".txt");
 				}
 				catch(Exception e)
 				{
-					logger.warn(e);
+					logger.warn(e + "Error in snapshot module");
 				}
 				
 			}

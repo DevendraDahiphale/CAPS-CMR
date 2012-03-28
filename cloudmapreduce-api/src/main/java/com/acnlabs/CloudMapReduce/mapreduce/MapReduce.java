@@ -424,10 +424,10 @@ public class MapReduce {
 					logger.info("\n\nA snapshot request serving is in process");
 					outputQueue.flush();  // output queue is an efficient queue, need to flush to clear
 					new Snapshot(outputQueue,accessKeyId,secretAccessKey).ShowSnapshot(); 
+					Global.numberOfReducerGivenOutputForCurrentSnapshotRequest=0;
 				}
 				committedMapForJobProgressTrace = dbManager.getCommittedTask(jobID, Global.STAGE.MAP);
 				if(committedMapForJobProgressTrace.size()==Global.numSplit){
-				 committedReducerForJobProgressTrace=dbManager.getCommittedTask(jobID, Global.STAGE.REDUCE);
 					if(Global.numFinishedReducers==numReduceQs){
 				   	 	logger.info("\n\nCurrent input of the job is completely processed");
 				   	 	Global.endCurrentJob=true;
@@ -463,7 +463,7 @@ public class MapReduce {
 			try{
 				committedReducerForJobProgressTrace=dbManager.getCommittedTask(jobID, Global.STAGE.REDUCE);
 				//check if all the reducer are finished by their own after a terminate job notifiction from user( not forced to close )
-	   	 		if(this.committedReducerForJobProgressTrace.size()==numReduceQs ){
+	   	 		if(committedReducerForJobProgressTrace.size()==numReduceQs ){
 	   	 			endCurrentJob=true;
 	   	 		}
 	   	 		Thread.sleep(100);
@@ -654,7 +654,7 @@ public class MapReduce {
     							snapshotRequestsServed=Global.snapshotRequestNumber; 
     							dbManager.updateOutputCommittedReducerCount();
     						}
-    					} while ( count < total || committedMap.size()!=Global.numSplit || numOfPasses < 2);  // queue may not be empty because of eventual consistency
+    					} while ( !Global.endCurrentJob && (count < total || committedMap.size()!=Global.numSplit || numOfPasses < 2));  // queue may not be empty because of eventual consistency
     					if ( count > total )
     						logger.warn("Reduce queue " + bucket + " processed more than available: " + count + " vs. " + total);
 				
