@@ -65,16 +65,11 @@ public class StreamHandler implements Runnable{
 				for (S3Item child : children) {
 					//Dev if previously processed item then do not add
 					if (!child.isDir() && !preProcessedFileList.contains(child.getPath())){
-						if(("/cmr-bucket/cmr-job-input/control/snapshot").equals(child.getPath())){
+						if(("/cmr-bucket/cmr-job-input/control/snapshot.txt").equals(child.getPath())){
 							logger.info("\n\nA request from user for snapshot of output is detected");
-							s3FileSystem.getItem("/cmr-bucket/cmr-job-input/control/snapshot").delete(); //user notification for snapshot of available output
+							s3FileSystem.getItem("/cmr-bucket/cmr-job-input/control/snapshot.txt").delete(); //user notification for snapshot of available output
 							Global.snapshotRequestNumber++;
-						}
-						else if(("/cmr-bucket/cmr-job-input/control/stop").equals(child.getPath())){
-							
-							logger.info("\n\nA request from user for snapshot of output is detected");
-							s3FileSystem.getItem("/cmr-bucket/cmr-job-input/control/stop").delete();  //User notification for snapshot of available output
-							Global.endCurrentJob=true;
+							logger.info("\n\nA takesnapshot is set");
 						}
 						else{
 							newItem=true;
@@ -98,17 +93,12 @@ public class StreamHandler implements Runnable{
 						if(!preProcessedFileList.contains(child.getPath()))
 						{
 							
-							if(("/cmr-bucket/cmr-job-input/control/snapshot").equals(child.getPath())){
+							if(("/cmr-bucket/cmr-job-input/control/snapshot.txt").equals(child.getPath())){
 							
-								logger.info("A request for snapshot is detected");
-								s3FileSystem.getItem("/cmr-bucket/cmr-job-input/control/snapshot").delete();  //User notification for snapshot of available output
+								logger.info("\n\nA request from user for snapshot of output is detected");
+								s3FileSystem.getItem("/cmr-bucket/cmr-job-input/control/snapshot.txt").delete();  //User notification for snapshot of available output
 								Global.snapshotRequestNumber++;  
-							}
-							else if(("/cmr-bucket/cmr-job-input/control/stop").equals(child.getPath())){
-							
-								logger.info("A request to terminate job is encountered");
-								s3FileSystem.getItem("/cmr-bucket/cmr-job-input/control/stop").delete();  //User notification for snapshot of available output
-								Global.endCurrentJob=true;
+								logger.info("\n\nA takesnapshot is set");
 							}
 							else{
 						    	newItem=true;
