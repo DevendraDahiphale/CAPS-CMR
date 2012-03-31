@@ -121,7 +121,7 @@ public class DbManager {
 		// query simpleDB to determine if all tasks in the phase have completed
 		int all = getPhaseSize(jobID, phase, null);
 		int running = getPhaseSize(jobID, phase, "running");
-		logger.debug("Checking " + phase + " phase: " + all + " registered " + running + " running.");
+	    logger.debug("Checking " + phase + " phase: " + all + " registered " + running + " running.");
 		boolean phaseExists = all >= minimumTasks;
 		return phaseExists && running == 0;
 	}
@@ -134,7 +134,7 @@ public class DbManager {
 	 * @param minimumTasks the minimum number of tasks needed to continue.
 	 */
 	public void waitForPhaseComplete(String jobID, String phase, int minimumTasks) {
-		logger.debug("wait for " + phase + " phase to complete");
+		//Dev comment:For Performance	logger.debug("wait for " + phase + " phase to complete");
 		// check jobManager to see if all Reducers have completed
 		while (!isPhaseComplete(jobID, phase, minimumTasks)) {
 			// wait for reduce phase to complete
@@ -168,7 +168,7 @@ public class DbManager {
 	        do {
 				try {
 					retry = false;
-		        	logger.debug("Creating domain " + domainName);
+					logger.debug("Creating domain " + domainName);
 		            service.createDomain(new CreateDomainRequest().withDomainName(domainName));
 			    } catch (AmazonSimpleDBException ex) {
 			    	retry = true;
@@ -707,7 +707,8 @@ public class DbManager {
     		
    /**
 	 * Get the total number of items in a reduce queue
-	 * MapReduce class makes sure only call this function one at a time
+	 * MapReduce class makes sure only call this function on47821
+e at a time
 	 * 
 	 * @param jobID the jobID
 	 * @param reduceQId the numerical id of the reduce queue
@@ -726,21 +727,27 @@ public class DbManager {
 			// wait for all threads to finish
 			workers.waitForFinish();
 
-			if ( reduceQCount < numSplits ) {
+		/*Devendra commented: 	if ( reduceQCount < numSplits ) {
 				logger.debug("Getting reduceQ " + reduceQId + " size, only " + reduceQCount + " out of " + numSplits );//DEVENDRA NEW+ " found. Will retry.");
 				try {Thread.sleep(1000);} catch (Exception ex2) {}
 			}
-	//Devendra new	} while ( reduceQCount < numSplits );
+	    } while ( reduceQCount < numSplits ); */
 		
 		return reduceQSize;
-	}
-	
-	//Devendra: New added functions in this file for tracking down job progress
-	
+	}	
+	//Devendra: to keep track of which reducer has given it's output on particular snapshot request 
 	public synchronized void updateOutputCommittedReducerCount(){
 		
 		Global.numberOfReducerGivenOutputForCurrentSnapshotRequest++;
 	}
+	
+	  /*
+	   * Devendra: added it to track all the local workers are finished or not just to notify the user
+	   * if operation is decrement then calling reducer has found new data in input queue and will withdraw
+	   * it's commitment if it has already commited that it is finished
+	   * if operation is increment then calling reducer is finished with it's queue and update the it's status as finished 
+	   * by incrementing total finished reducer count
+	   */
 	public synchronized void updateFinishedReducersCount(String operation){
 		
 		if("decrement".equals(operation)){
@@ -750,4 +757,8 @@ public class DbManager {
 			Global.numFinishedReducers++;
 		}
 	}	
+	public void incrementNUmberOfRecordsProcessedByReducers(){
+		
+		Global.numOfRecordsProcessedByReducers++;
+	}
 }

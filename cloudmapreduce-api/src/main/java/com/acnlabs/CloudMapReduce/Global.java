@@ -50,11 +50,16 @@ public class Global {
 	
 	   //Devendra: Added new variables
 	static public int numSplit;  
-	static public long numFinishedReducers;
-	static public long numFinishedMappers;
-	static public long snapshotRequestNumber; //Dev: For each request it will be incremented by one
-	static public boolean endCurrentJob=false;
-	static public long numberOfReducerGivenOutputForCurrentSnapshotRequest;
+	static public long numFinishedReducers;  //total number of finished local reduce workers
+	static public long numFinishedMappers;   //total number of finished local map workers
+	static public long snapshotRequestNumber; // For each request it will be incremented by one
+	static public boolean endCurrentJob=false; //this is made true when user wants to teminate the job, notification track is kept in streamhandling module
+	static public long numberOfReducerGivenOutputForCurrentSnapshotRequest; //for snapshot serving purpose
+	static public long timeTOCopleteJob;   //keep total time required to complete the job
+	static public long numOfInvokedMappers; //total number of invoked local mappers 
+	static public long numOfInvokedReducers; //total number of invoked local reducers
+	static public long numOfRecordsProcessedByMappers;
+	static public long numOfRecordsProcessedByReducers;
 	
 	/*RBK: */
 	static public JobProgressTracker jobProgressTracker;

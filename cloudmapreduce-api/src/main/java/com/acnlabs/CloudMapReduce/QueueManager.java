@@ -58,7 +58,7 @@ public class QueueManager implements Closeable {
 	private HashSet<String> existingQueues = new HashSet<String>();
 	static final int NUM_END_QUEUE_RETRIES = 3;   // retries, because queue may return empty at end even if still have things left
 	public PerformanceTracker perf = new PerformanceTracker();
-	static final int MAX_MESSAGE_BODY_SIZE = 7*1024;
+	static final int MAX_MESSAGE_BODY_SIZE = 7*1024; //devendra made 4 kb for reducers to get early data
 	private Logger  logger = Logger.getLogger("com.acnlabs.CloudMapReduce.QueueManager");
 	    
     public enum QueueType {MAP, REDUCE, MASTERREDUCE, OUTPUT }
@@ -539,7 +539,7 @@ public class QueueManager implements Closeable {
         	}
     	}
     }
-
+    
     private class DeleteQueueRunnable implements Runnable {
     	String queueName;
     	
@@ -551,5 +551,4 @@ public class QueueManager implements Closeable {
     		deleteQueue(queueName);
     	}
     }
-    
 }

@@ -63,13 +63,13 @@ public abstract class MapReduceApp {
 
     // threads are used to parallelize in order to hide S3 and SQS download latency
     @Option(name="-tr",usage="number of local Reduce threads")
-    protected int numLocalReduceThreads = 4;
+    protected int numLocalReduceThreads = 2;
 
 	@Option(name="-tu",usage="Number of upload workers for each map")
-	protected int numUploadWorkersPerMap = 20;
+	protected int numUploadWorkersPerMap = 5;
 
 	@Option(name="-td",usage="Number of download workers for each reduce queue")
-	protected int numDownloadWorkersPerReduce = 20;
+	protected int numDownloadWorkersPerReduce = 5;
 	
     // reduce queue read buffer size, used to parallelize reading from individual reduce queues
     @Option(name="-b",usage="size of buffer (num of messages) for reading from reduce queues")
@@ -106,7 +106,7 @@ public abstract class MapReduceApp {
 	protected int mapQTimeout = 7200;  // timeout for pickup failed map tasks
 	
 	@Option(name="-vr",usage="Visibility timeout for the reduce queue")
-	protected int reduceQTimeout = 600;  // timeout to resume after conflict resolution
+	protected int reduceQTimeout = 7200;  // timeout to resume after conflict resolution
 
     @Option(name="-vm",usage="Visibility timeout for the master reduce queue")
     protected int masterReduceQTimeout = 7200;  // timeout for pickup failed reduce tasks
@@ -116,7 +116,7 @@ public abstract class MapReduceApp {
     private List<String> arguments = new ArrayList<String>();
 
 	protected abstract void run(String jobID, int numReduceQs, int numSetupNodes, 
-			SimpleQueue inputQueue, SimpleQueue outputQueue, int numReduceQReadBuffer,String accessKeyId,String secretAccessKey) throws IOException;
+			SimpleQueue inputQueue, SimpleQueue outputQueue, int numReduceQReadBuffer,String accessKeyId,String secretAccessKey,String s3Path) throws IOException;
 	
 	/**
 	 * @param args
@@ -160,13 +160,13 @@ public abstract class MapReduceApp {
 		Global.enableCombiner = enableCombiner;
 		Global.numSDBDomain = numSDBDomain;
 		Global.outputQueueName = outputQueueName;
+		Global.numSplit=numSplits;
 		
 		/*RBK: jobProgressTracker initialization */
 		//TODO change the static s3Path given to cmd line arg. a separate arg for jobtracker, rolling, everything. the user mit want that
-		Global.jobProgressTracker=new JobProgressTracker(1000,"/cmr-bucket/" + "JobProgressTrackerData/",accessKeyId,secretAccessKey); //WRONG WRONG WRONG:::run() is called in the constructor of JobProgressTracker itself
-		new Thread(Global.jobProgressTracker).start();	//REMEMBER THIS METHOD> NOT TO INCLUDE RUN() call IN THE CONSTRUCTOR!! DOES NOT NOT NOT CREATE A NEW THREAD!!!
-		//ALSO DO NOT USE .run(). that function DOES NOT RETURN. use START ONLY!!
 		
+   	Global.jobProgressTracker=new JobProgressTracker(1000,s3Path,accessKeyId,secretAccessKey); 
+		new Thread(Global.jobProgressTracker).start();	
 		dbManager = new DbManager(accessKeyId, secretAccessKey, numSplits, numReduceQs);
 		queueManager = new QueueManager(accessKeyId, secretAccessKey);  // workers used to clean queues
 		s3FileSystem = new S3FileSystem(accessKeyId, secretAccessKey);
@@ -189,11 +189,14 @@ public abstract class MapReduceApp {
 			{
 				logger.info("error while reading item" + e);
 			}
-			new Thread(new StreamHandler(s3Path,inputQueue,numSplits,s3FileSystem)).start();
+			Thread streamHandlerThread;
+			streamHandlerThread=new Thread(new StreamHandler(s3Path,inputQueue,numSplits,s3FileSystem));
+			streamHandlerThread.setName("streamHandler_thread");
+			streamHandlerThread.start();
 		}
 		
 		// Run MapReduce application, implemented in individual app
-		run(jobID, numReduceQs, numSetupNodes, inputQueue, outputQueue, numReduceQReadBuffer,accessKeyId, secretAccessKey);
+		run(jobID, numReduceQs, numSetupNodes, inputQueue, outputQueue, numReduceQReadBuffer,accessKeyId, secretAccessKey,s3Path);
 		
 		// node 0 prints out some outputs for debugging purpose, can be disabled in production with -d 0
 		if (clientID == 0 && numDisplay > 0) {

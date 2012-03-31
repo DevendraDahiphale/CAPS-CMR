@@ -5,6 +5,11 @@ import org.apache.log4j.Logger;
 
 import com.acnlabs.CloudMapReduce.*;
 
+/*
+ * Devendra: This module periodically uploads files to s3 for dynamically showing the graph
+ * of mappers and reducers progress. Only for demonstration purpose, may be removed later 
+ */
+
 public class JobProgressTracker implements Runnable{
 			
 		private long numRecordsGeneratedByMappers=0;	//total number-cumulative of all mappers
@@ -26,7 +31,7 @@ public class JobProgressTracker implements Runnable{
 			this.progressTrackingInterval=progressTrackingIntervalInMillis;
 			this.s3Path=s3Path;	//RBK TODO take from user as a command line argument. Must be a folder-ending in "/"
 			s3FileSystem=new S3FileSystem(accessKeyId,secretAccessKey);
-			s3Item=s3FileSystem.getItem(s3Path);
+			s3Item=s3FileSystem.getItem(s3Path.substring(0,s3Path.substring(1).indexOf('/') +2) + "JobProgressTrackerData/");
 			s3Item.upload("mapperProgressLog.txt",(String.valueOf(System.currentTimeMillis()/1000) + " " + String.valueOf(0)).getBytes());
 			s3Item.upload("reducerProgressLog.txt",(String.valueOf(System.currentTimeMillis()/1000) + " " + String.valueOf(0)).getBytes());
 				
@@ -34,12 +39,11 @@ public class JobProgressTracker implements Runnable{
 		
 		public void run(){
 			while(true){
-				logger.info("run madhe");
 				try {
 					Thread.sleep(progressTrackingInterval);
 					
-					mapperPerfList.add(String.valueOf(System.currentTimeMillis()/1000) + " " + String.valueOf(numRecordsGeneratedByMappers));
-					reducerPerfList.add(String.valueOf(System.currentTimeMillis()/1000) + " " + String.valueOf(numRecordsProcessedByReducers));
+					mapperPerfList.add(String.valueOf(System.currentTimeMillis()-Global.timeTOCopleteJob) + " " + String.valueOf(numRecordsGeneratedByMappers));
+					reducerPerfList.add(String.valueOf(System.currentTimeMillis()-Global.timeTOCopleteJob) + " " + String.valueOf(numRecordsProcessedByReducers));
 					
 					if(mapperPerfList.size()>=100){
 						/* untested code: moved to updateFile()
@@ -53,7 +57,7 @@ public class JobProgressTracker implements Runnable{
 						
 						mapperPerfList.clear();	//IMP REM.
 						*/
-						updateFile("mapperProgressLog.txt",mapperPerfList); //dont give /mapperProgressLog as the / is included in the s3Itempath??
+						updateFile(Global.clientID + "mapperProgressLog.txt",mapperPerfList); //dont give /mapperProgressLog as the / is included in the s3Itempath??
 						mapperPerfList.clear();
 					}
 					if(reducerPerfList.size()>=100){
@@ -68,7 +72,7 @@ public class JobProgressTracker implements Runnable{
 						
 						reducerPerfList.clear();	//IMP REM.
 						*/
-						updateFile("reducerProgressLog.txt",reducerPerfList);
+						updateFile(Global.clientID + "reducerProgressLog.txt",reducerPerfList);
 						reducerPerfList.clear();
 						
 					}
@@ -85,19 +89,13 @@ public class JobProgressTracker implements Runnable{
 			numRecordsProcessedByReducers++;
 		}
 		private void updateFile(String filename, ArrayList<String> newDataList){	
-			logger.info("\n\n\npath is: " +s3Item.getPath() + filename);
-			
 			S3Item fileToWriteProgressTo=s3FileSystem.getItem(s3Item.getPath() + filename);
 			String fileData=fileToWriteProgressTo.getData();
 			for(String s:newDataList){
-				//logger.info("\n\ncurrent file data: " + fileData);
 				fileData=fileData+"\n"+s;
 			}
 			fileToWriteProgressTo.delete();
-			//s3Item.upload(s3Item.getPath()+filename, fileData.getBytes()); //NO just the filename. s3Item itself has the necessary hierarchy in it
 			s3Item.upload(filename, fileData.getBytes()); 
-		//	newDataList.clear();	//IMP REM.
-			//this clear is called in the CALLING function, as i wasn't sure if the reference to the list is passed, or a copy
 			
 		}
 }

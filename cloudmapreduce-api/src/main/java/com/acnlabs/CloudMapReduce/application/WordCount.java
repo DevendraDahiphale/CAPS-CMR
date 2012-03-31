@@ -123,10 +123,10 @@ public class WordCount extends MapReduceApp{
   
 	
 	protected void run(String jobID, int numReduceQs,
-			int numSetupNodes, SimpleQueue inputQueue, SimpleQueue outputQueue, int numReduceQReadBuffer,String accessKeyId,String secretAccessKey) 
+			int numSetupNodes, SimpleQueue inputQueue, SimpleQueue outputQueue, int numReduceQReadBuffer,String accessKeyId,String secretAccessKey,String s3Path) 
 			throws IOException {
 		
-		MapReduce mapreduce = new MapReduce(jobID, dbManager, queueManager, inputQueue, outputQueue);
+		MapReduce mapreduce = new MapReduce(jobID, dbManager, queueManager, inputQueue, outputQueue,s3Path);
 		Map map = new Map(s3FileSystem);
 		Reduce reduce = new Reduce();
 
@@ -145,6 +145,7 @@ public class WordCount extends MapReduceApp{
    */
 	 
   public static void main(String[] args) throws Exception{
+	  Global.timeTOCopleteJob=System.currentTimeMillis();
 	  new WordCount().runMain(args);
 	  System.exit(0);
   }
