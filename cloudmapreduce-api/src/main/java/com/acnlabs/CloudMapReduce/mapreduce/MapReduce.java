@@ -452,7 +452,7 @@ public class MapReduce {
 					if(committedReducerForJobProgressTrace.size()==numReduceQs){
 						logger.info("***Current input of the job is completely processed" ); // if you want to terminate the job upload 'stop' named file in control folder of input path");
 						 //Devendra : make termination status true when all data is finished  for now, will be 
-					// Global.endCurrentJob=true;
+						Global.endCurrentJob=true;
 				   	 //	endCurrentJob=true;
 						logger.info("***can stop now");
 					}

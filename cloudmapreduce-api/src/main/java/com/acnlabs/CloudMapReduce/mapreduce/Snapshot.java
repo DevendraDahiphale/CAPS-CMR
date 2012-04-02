@@ -55,8 +55,10 @@ public class Snapshot{
 					   //Devendra: Reading data from output queue and store it into local string
 					for (Message msg : outputQueue) { 
 				//		localFlag=true;
+						
 						String keyValuePair = msg.getBody();
 						outputString=outputString + "\n" + keyValuePair.substring(0, keyValuePair.indexOf('!')) + " " + keyValuePair.substring(keyValuePair.indexOf('!')+3);
+						logger.info("*** true output available" + " record :" + keyValuePair);
 					}
 				//	if(localFlag==false)
 				//	   numberOfPasses++;
@@ -90,7 +92,5 @@ public class Snapshot{
 						fileData=fileData + "\n" + s;
 					}
 					s3Item.upload(fileName, fileData.getBytes()); 
-					
-		
 			}
 }
